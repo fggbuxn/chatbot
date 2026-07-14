@@ -1,0 +1,99 @@
+const logger = require("./utils/log");
+const db = require("./database");
+const { ask, notifyOwner } = require("./ai");
+const { getActivationResponse } = require("./personality");
+const { randomRoast } = require("./roasts");
+const pJson = require("../package.json");
+
+module.exports = function ({ api }) {
+  return async function (event) {
+    try {
+      const { type, senderID, threadID, body, isGroup } = event;
+      if (type !== "message" && type !== "message_reply") return;
+      if (!body || typeof body !== "string") return;
+      if (senderID === api.getCurrentUserID()) return;
+
+      const ownerId = global.config.OWNER_ID;
+      const ownerName = global.config.OWNER_NAME;
+      const isOwner = String(senderID) === String(ownerId);
+      const isAdmin = global.config.ADMIN_IDS?.includes(String(senderID));
+
+      // Auto-scan and save user
+      const existing = db.getUser(senderID);
+      if (!existing) {
+        try {
+          const info = await api.getUserInfo(senderID);
+          const name = info[senderID]?.name || "Unknown";
+          db.setUser(senderID, { name, firstSeen: Date.now(), chatCount: 0 });
+          logger(`👤 New user scanned: ${name}`, "SCAN");
+        } catch {}
+      } else {
+        existing.chatCount = (existing.chatCount || 0) + 1;
+        db.setUser(senderID, existing);
+      }
+
+      // Auto-scan thread
+      if (isGroup && !db.getThread(threadID)) {
+        try {
+          const info = await api.getThreadInfo(threadID);
+          db.setThread(threadID, {
+            name: info.threadName || "Unnamed",
+            members: info.participantIDs || [],
+            firstSeen: Date.now()
+          });
+          logger(`📋 Thread scanned: ${db.getThread(threadID)?.name || threadID}`, "SCAN");
+        } catch {}
+      }
+
+      // Wake word detection: "soda" or "soda!"
+      const lower = body.toLowerCase().trim();
+      const isWake = lower.startsWith("soda") || lower.includes("soda!");
+
+      if (!isWake) return;
+
+      // Strip wake word to get the actual prompt
+      let prompt = body.replace(/^soda[!\s,]*/i, "").replace(/soda!/gi, "").trim();
+
+      // Get image if there's a reply attachment
+      let imageUrl = null;
+      if (event.messageReply?.attachments?.length > 0) {
+        const att = event.messageReply.attachments[0];
+        if (att.type === "photo" || att.type === "animated_image") {
+          imageUrl = att.url;
+        }
+      }
+      if (event.attachments?.length > 0) {
+        const att = event.attachments[0];
+        if (att.type === "photo" || att.type === "animated_image") {
+          imageUrl = att.url;
+        }
+      }
+
+      // Handle owner
+      if (isOwner || isAdmin) {
+        logger(`💬 Owner said: "${prompt || "(just woke me)"}"`, "DM");
+        if (!prompt && !imageUrl) {
+          return api.sendMessage(`🫡 Yes ${ownerName}? I'm always ready for you. What do you need?`, threadID);
+        }
+        const reply = await ask(prompt || "Say hello to my owner respectfully", senderID, imageUrl);
+        db.addToConvo(senderID, "user", prompt);
+        db.addToConvo(senderID, "assistant", reply);
+        return api.sendMessage(reply, threadID);
+      }
+
+      // Handle everyone else — with roasting
+      if (!prompt && !imageUrl) {
+        return api.sendMessage(`🔥 *ROAST MODE* 🔥\n${randomRoast()}`, threadID);
+      }
+
+      const reply = await ask(prompt || "Roast this person creatively", senderID, imageUrl);
+      db.addToConvo(senderID, "user", prompt);
+      db.addToConvo(senderID, "assistant", reply);
+      api.sendMessage(reply, threadID);
+
+    } catch (err) {
+      logger(`Listener error: ${err.message}`, "ERROR");
+      notifyOwner(`❌ SODA crashed on a message:\n${err.message}`);
+    }
+  };
+};

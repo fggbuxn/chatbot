@@ -1,0 +1,27 @@
+{
+  "BOTNAME": "SODA",
+  "OWNER_NAME": "RM ABIR",
+  "OWNER_ID": "61587401405859",
+  "ADMIN_IDS": ["61587401405859"],
+  "APPSTATEPATH": "appstate.json",
+  "AI_PROVIDER": "gemini",
+  "OPENAI_API_KEY": "",
+  "GEMINI_API_KEY": "AQ.Ab8RN6IaCt353f1rIJDO94cjnGIL-_GJwPD5rb5vIic7Qy2dhA",
+  "FCAOption": {
+    "selfListen": false,
+    "listenEvents": true,
+    "listenTyping": false,
+    "updatePresence": false,
+    "forceLogin": false,
+    "autoMarkDelivery": false,
+    "autoMarkRead": false,
+    "autoReconnect": true,
+    "online": false,
+    "emitReady": false
+  },
+  "System": {
+    "autoRestart": true,
+    "restartInterval": 86400,
+    "errorLog": true
+  }
+}

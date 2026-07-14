@@ -7,8 +7,7 @@ const db = require("./database");
 const axios = require("axios");
 
 let openai = null;
-let geminiPro = null;
-let geminiVision = null;
+let gemini = null;
 
 function init() {
   const c = global.config;
@@ -18,11 +17,10 @@ function init() {
   }
   if (c.AI_PROVIDER === "gemini" && c.GEMINI_API_KEY) {
     const gen = new GoogleGenerativeAI(c.GEMINI_API_KEY);
-    geminiPro = gen.getGenerativeModel({ model: "gemini-pro" });
-    geminiVision = gen.getGenerativeModel({ model: "gemini-pro-vision" });
-    logger("Gemini Pro + Vision ready", "AI");
+    gemini = gen.getGenerativeModel({ model: "gemini-1.5-pro" });
+    logger("Gemini 1.5 Pro ready", "AI");
   }
-  if (!openai && !geminiPro) {
+  if (!openai && !gemini) {
     logger("No API key set — using local replies only", "WARN");
   }
 }
@@ -34,7 +32,7 @@ async function ask(prompt, userId, imageUrl = null) {
   if (c.AI_PROVIDER === "openai" && openai) {
     return askOpenAI(prompt, history, imageUrl);
   }
-  if (c.AI_PROVIDER === "gemini" && geminiPro) {
+  if (c.AI_PROVIDER === "gemini" && gemini) {
     return askGemini(prompt, history, imageUrl);
   }
 
@@ -77,28 +75,39 @@ async function askOpenAI(prompt, history, imageUrl) {
 
 async function askGemini(prompt, history, imageUrl) {
   try {
-    if (imageUrl && geminiVision) {
+    const contents = history.slice(-10).map(m => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }]
+    }));
+
+    if (imageUrl) {
       const imgResp = await axios.get(imageUrl, { responseType: "arraybuffer" });
       const base64 = Buffer.from(imgResp.data).toString("base64");
       const mime = imgResp.headers["content-type"] || "image/jpeg";
 
-      const result = await geminiVision.generateContent([
-        { text: `${buildSystemPrompt()}\n\nUser: ${prompt || "What do you see here? Roast it creatively."}` },
-        { inlineData: { mimeType: mime, data: base64 } }
-      ]);
+      const result = await gemini.generateContent({
+        contents: [
+          ...contents,
+          {
+            role: "user",
+            parts: [
+              { text: `${buildSystemPrompt()}\n\nUser: ${prompt || "Roast this image creatively."}` },
+              { inlineData: { mimeType: mime, data: base64 } }
+            ]
+          }
+        ],
+        generationConfig: { maxOutputTokens: 1024, temperature: 0.85 }
+      });
       return result.response.text();
     }
 
-    const chat = geminiPro.startChat({
-      history: history.slice(-5).map(m => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }]
-      })),
+    const chat = gemini.startChat({
+      history: contents,
       generationConfig: { maxOutputTokens: 1024, temperature: 0.85 },
       systemInstruction: { parts: [{ text: buildSystemPrompt() }] }
     });
 
-    const result = await chat.sendMessage(prompt);
+    const result = await chat.sendMessage(prompt || "Say something funny");
     return result.response.text();
   } catch (err) {
     logger(`Gemini error: ${err.message}`, "ERROR");

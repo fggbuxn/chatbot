@@ -8,6 +8,7 @@ let client = null;
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_VISION_MODEL = "llama-3.2-11b-vision-preview";
 
 function init() {
   const c = global.config;
@@ -58,7 +59,12 @@ async function ask(prompt, userId, imageUrl = null) {
   if (!client) return fallbackReply();
 
   try {
-    const model = global.config.AI_PROVIDER === "groq" ? GROQ_MODEL : "gpt-4o-mini";
+    const isVision = Boolean(imageUrl);
+    const model = isVision && global.config.AI_PROVIDER === "groq"
+      ? GROQ_VISION_MODEL
+      : global.config.AI_PROVIDER === "groq"
+        ? GROQ_MODEL
+        : "gpt-4o-mini";
 
     const msgs = [
       { role: "system", content: buildSystemPrompt() },
@@ -71,18 +77,13 @@ async function ask(prompt, userId, imageUrl = null) {
     ];
 
     if (imageUrl) {
-      const isVisionModel = model.includes("vision");
-      if (isVisionModel) {
-        msgs.push({
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: imageUrl } }
-          ]
-        });
-      } else {
-        msgs.push({ role: "user", content: `${prompt}\n[IMAGE: ${imageUrl}]` });
-      }
+      msgs.push({
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: imageUrl } }
+        ]
+      });
     } else {
       msgs.push({ role: "user", content: prompt });
     }

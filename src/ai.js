@@ -7,7 +7,7 @@ const db = require("./database");
 let client = null;
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
-const GROQ_MODEL = "llama3-70b-8192";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 function init() {
   const c = global.config;

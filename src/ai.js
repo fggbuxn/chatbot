@@ -12,6 +12,35 @@ const GROQ_MODEL = "llama-3.3-70b-versatile";
 function init() {
   const c = global.config;
 
+  // Sanitize any corrupted conversation data (content arrays saved by old versions)
+  try {
+    const cols = require("./database");
+    const convos = require("fs-extra").readJsonSync(
+      require("path").join(__dirname, "..", "data", "conversations.json"),
+      { throws: false }
+    ) || {};
+    let cleaned = 0;
+    for (const uid of Object.keys(convos)) {
+      const arr = convos[uid];
+      if (!Array.isArray(arr)) continue;
+      convos[uid] = arr.map(entry => {
+        if (entry && typeof entry === "object" && Array.isArray(entry.content)) {
+          cleaned++;
+          return { ...entry, content: entry.content.find(c => c.type === "text")?.text || JSON.stringify(entry.content) };
+        }
+        return entry;
+      });
+    }
+    if (cleaned > 0) {
+      require("fs-extra").writeJsonSync(
+        require("path").join(__dirname, "..", "data", "conversations.json"),
+        convos,
+        { spaces: 2 }
+      );
+      logger(`Sanitized ${cleaned} corrupted conversation entries`, "DB");
+    }
+  } catch {}
+
   if (c.AI_PROVIDER === "groq" && c.GROQ_API_KEY) {
     client = new OpenAI({ baseURL: GROQ_BASE, apiKey: c.GROQ_API_KEY });
     logger("Groq (Llama 3 70B) connected", "AI");
@@ -29,6 +58,8 @@ async function ask(prompt, userId, imageUrl = null) {
   if (!client) return fallbackReply();
 
   try {
+    const model = global.config.AI_PROVIDER === "groq" ? GROQ_MODEL : "gpt-4o-mini";
+
     const msgs = [
       { role: "system", content: buildSystemPrompt() },
       ...history.slice(-10).map(m => ({
@@ -40,18 +71,21 @@ async function ask(prompt, userId, imageUrl = null) {
     ];
 
     if (imageUrl) {
-      msgs.push({
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: imageUrl } }
-        ]
-      });
+      const isVisionModel = model.includes("vision");
+      if (isVisionModel) {
+        msgs.push({
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: imageUrl } }
+          ]
+        });
+      } else {
+        msgs.push({ role: "user", content: `${prompt}\n[IMAGE: ${imageUrl}]` });
+      }
     } else {
       msgs.push({ role: "user", content: prompt });
     }
-
-    const model = global.config.AI_PROVIDER === "groq" ? GROQ_MODEL : "gpt-4o-mini";
 
     const resp = await client.chat.completions.create({
       model,

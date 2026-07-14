@@ -89,6 +89,7 @@ function start() {
     const getAiLabel = () => {
       if (global.config.AI_PROVIDER === "openai") return "OPENAI (GPT-4o)";
       if (global.config.AI_PROVIDER === "gemini") return "GEMINI PRO";
+      if (global.config.AI_PROVIDER === "groq") return "GROQ (Llama 3 70B)";
       return "LOCAL MODE (offline roasts)";
     };
     const chalk = require("chalk");

@@ -1,51 +1,33 @@
 const OpenAI = require("openai");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const logger = require("./utils/log");
 const { randomRoast } = require("./roasts");
 const { buildSystemPrompt } = require("./personality");
 const db = require("./database");
-const axios = require("axios");
 
-let openai = null;
-let geminiModels = [];
+let client = null;
 
-const TRY_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro"];
+const GROQ_BASE = "https://api.groq.com/openai/v1";
+const GROQ_MODEL = "llama3-70b-8192";
 
 function init() {
   const c = global.config;
-  if (c.AI_PROVIDER === "openai" && c.OPENAI_API_KEY) {
-    openai = new OpenAI({ apiKey: c.OPENAI_API_KEY });
+
+  if (c.AI_PROVIDER === "groq" && c.GROQ_API_KEY) {
+    client = new OpenAI({ baseURL: GROQ_BASE, apiKey: c.GROQ_API_KEY });
+    logger("Groq (Llama 3 70B) connected", "AI");
+  } else if (c.AI_PROVIDER === "openai" && c.OPENAI_API_KEY) {
+    client = new OpenAI({ apiKey: c.OPENAI_API_KEY });
     logger("OpenAI connected", "AI");
-  }
-  if (c.AI_PROVIDER === "gemini" && c.GEMINI_API_KEY) {
-    const gen = new GoogleGenerativeAI(c.GEMINI_API_KEY);
-    for (const name of TRY_MODELS) {
-      try {
-        geminiModels.push(gen.getGenerativeModel({ model: name }));
-      } catch {}
-    }
-    logger(`Gemini (${TRY_MODELS.length} models queued)`, "AI");
-  }
-  if (!openai && geminiModels.length === 0) {
-    logger("No API key set — using local replies only", "WARN");
+  } else {
+    logger("No API key — using local replies only", "WARN");
   }
 }
 
 async function ask(prompt, userId, imageUrl = null) {
-  const c = global.config;
   const history = db.getConvo(userId);
 
-  if (c.AI_PROVIDER === "openai" && openai) {
-    return askOpenAI(prompt, history, imageUrl);
-  }
-  if (c.AI_PROVIDER === "gemini" && geminiModels.length > 0) {
-    return askGemini(prompt, history, imageUrl);
-  }
+  if (!client) return fallbackReply();
 
-  return fallbackReply();
-}
-
-async function askOpenAI(prompt, history, imageUrl) {
   try {
     const msgs = [
       { role: "system", content: buildSystemPrompt() },
@@ -64,8 +46,10 @@ async function askOpenAI(prompt, history, imageUrl) {
       msgs.push({ role: "user", content: prompt });
     }
 
-    const resp = await openai.chat.completions.create({
-      model: imageUrl ? "gpt-4o-mini" : "gpt-4o-mini",
+    const model = global.config.AI_PROVIDER === "groq" ? GROQ_MODEL : "gpt-4o-mini";
+
+    const resp = await client.chat.completions.create({
+      model,
       messages: msgs,
       max_tokens: 1024,
       temperature: 0.85
@@ -73,56 +57,14 @@ async function askOpenAI(prompt, history, imageUrl) {
 
     return resp.choices[0]?.message?.content || fallbackReply();
   } catch (err) {
-    logger(`OpenAI error: ${err.message}`, "ERROR");
-    notifyOwner(`⚠️ OpenAI API error: ${err.message}`);
+    logger(`AI error: ${err.message}`, "ERROR");
+    if (err.status === 429) {
+      notifyOwner("⚠️ Groq quota exhausted. Using local replies.");
+    } else {
+      notifyOwner(`⚠️ AI API error: ${err.message}`);
+    }
     return fallbackReply();
   }
-}
-
-async function askGemini(prompt, history, imageUrl) {
-  const contents = history.slice(-10).map(m => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }]
-  }));
-
-  for (const model of geminiModels) {
-    try {
-      if (imageUrl) {
-        const imgResp = await axios.get(imageUrl, { responseType: "arraybuffer" });
-        const base64 = Buffer.from(imgResp.data).toString("base64");
-        const mime = imgResp.headers["content-type"] || "image/jpeg";
-
-        const result = await model.generateContent({
-          contents: [
-            ...contents,
-            {
-              role: "user",
-              parts: [
-                { text: `${buildSystemPrompt()}\n\nUser: ${prompt || "Roast this image creatively."}` },
-                { inlineData: { mimeType: mime, data: base64 } }
-              ]
-            }
-          ],
-          generationConfig: { maxOutputTokens: 1024, temperature: 0.85 }
-        });
-        return result.response.text();
-      }
-
-      const chat = model.startChat({
-        history: contents,
-        generationConfig: { maxOutputTokens: 1024, temperature: 0.85 },
-        systemInstruction: { parts: [{ text: buildSystemPrompt() }] }
-      });
-
-      const result = await chat.sendMessage(prompt || "Say something funny");
-      return result.response.text();
-    } catch (err) {
-      logger(`Gemini (${model.model}) failed: ${err.message}`, "WARN");
-    }
-  }
-
-  notifyOwner("⚠️ All Gemini models failed. Check API key/permissions.");
-  return fallbackReply();
 }
 
 function fallbackReply() {

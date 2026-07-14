@@ -98,6 +98,12 @@ module.exports = function ({ api }) {
 
               logger(`Scanned ${memberIds.length} members in new group`, "SCAN");
 
+              // Auto-rename bot nickname
+              const botName = global.config.BOTNAME || "SODA";
+              api.changeNickname(threadID, botID, botName, (err) => {
+                if (err) logger(`Rename error: ${err.message}`, "WARN");
+              });
+
               // Send the full futuristic boot sequence
               sendBootSequence(api, threadID, scannedMembers);
 

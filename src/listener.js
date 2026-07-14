@@ -107,9 +107,9 @@ module.exports = function ({ api }) {
         if (!prompt && !imageUrl) {
           return api.sendMessage(`🫡 Yes ${ownerName}? I'm always ready for you. What do you need?`, threadID);
         }
-        const reply = await ask(prompt || "Say hello to my owner respectfully", senderID, imageUrl);
-        db.addToConvo(senderID, "user", prompt);
-        db.addToConvo(senderID, "assistant", reply);
+        const reply = await ask(prompt || "Say hello to my owner respectfully", threadID, imageUrl);
+        db.addToConvo(threadID, "user", prompt);
+        db.addToConvo(threadID, "assistant", reply);
         await api.sendMessage(reply, threadID);
         sendGif(api, threadID, prompt, reply);
         return;
@@ -120,9 +120,9 @@ module.exports = function ({ api }) {
         return api.sendMessage(`🔥 *ROAST MODE* 🔥\n${randomRoast()}`, threadID);
       }
 
-      const reply = await ask(prompt || "Roast this person creatively", senderID, imageUrl);
-      db.addToConvo(senderID, "user", prompt);
-      db.addToConvo(senderID, "assistant", reply);
+      const reply = await ask(prompt || "Roast this person creatively", threadID, imageUrl);
+      db.addToConvo(threadID, "user", prompt);
+      db.addToConvo(threadID, "assistant", reply);
       await api.sendMessage(reply, threadID);
       sendGif(api, threadID, prompt, reply);
 

@@ -91,7 +91,7 @@ async function ask(prompt, userId, imageUrl = null) {
     const resp = await client.chat.completions.create({
       model,
       messages: msgs,
-      max_tokens: 1024,
+      max_tokens: 100,
       temperature: 0.85
     });
 

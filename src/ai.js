@@ -8,7 +8,7 @@ let client = null;
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
-const GROQ_VISION_MODEL = "llama-3.2-11b-vision-preview";
+const GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
 function init() {
   const c = global.config;

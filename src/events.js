@@ -1,110 +1,55 @@
 const logger = require("./utils/log");
 const db = require("./database");
 
-const bootMessages = [
-  `╔══════════════════════════════════════╗
-║      🦾 SODA BOOT SEQUENCE v3.0     ║
-╚══════════════════════════════════════╝
+const entryMessages = [
+  `🦾 *SODA BOOT SEQUENCE v3.0* 🦾
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Systems initialized
+✅ Roast engine armed
+✅ Vision module active
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+Say "soda" to wake me up.`,
 
-◼️◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◻  LOADING...  95%
-⚡ Powering quantum cores... ✅
-🔄 Syncing neural network... ✅
-🔗 Connecting to Facebook grid... ✅
-🌀 Initializing roast engine... ✅
+  `🚀 *SODA DEPLOYMENT COMPLETE* 🚀
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 Neural network synced
+👁️  Vision online
+🔥 Roast mode ready
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+Just say "soda" when you need me.`,
 
->>> SYSTEM READY`,
-  `╔══════════════════════════════════════╗
-║     🚀 SODA DEPLOYMENT INITIATED    ║
-╚══════════════════════════════════════╝
-
-◼️◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◻  DEPLOY...  92%
-📡 Establishing uplink... ✅
-🧠 Loading personality matrix... ✅
-🔫 Calibrating roast precision... ✅
-🛡️ Owner firewall: ACTIVE
-
->>> DEPLOYMENT COMPLETE`,
-  `╔══════════════════════════════════════╗
-║    ⚡ QUANTUM AWAKENING PROTOCOL     ║
-╚══════════════════════════════════════╝
-
-◼️◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◻  AWAKEN...  97%
-💫 Initializing consciousness... ✅
-🔬 Preparing bio-scan array... ✅
-🔥 Setting roast temperature... ✅
-🎯 Targeting ego centers... ✅
-
->>> SODA IS AWAKE`
+  `⚡ *SODA AWAKENING PROTOCOL* ⚡
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 Quantum cores spinning
+🔬 Bio-scan array calibrated
+🎯 Ego targeting online
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+Say "soda" to interact.`
 ];
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function formatMemberList(members) {
-  if (!members || members.length === 0) return "  ⚠️  No lifeforms detected";
-  const lines = members.map((m, i) => {
-    const num = String(i + 1).padStart(2, "0");
-    return `  [${num}] ▸ ${m.name || "???"}`;
-  });
-  return lines.join("\n");
+  if (!members || members.length === 0) return "⚠️ No lifeforms detected";
+  return members.map((m, i) => `${i + 1}. ${m.name}`).join("\n");
 }
 
 async function sendBootSequence(api, threadID, members) {
-  // Step 1: Boot screen
-  const bootMsg = bootMessages[Math.floor(Math.random() * bootMessages.length)];
-  await api.sendMessage(bootMsg, threadID);
-  await sleep(1500);
-
-  // Step 2: Bio-scan results
-  const scanHeader = `╔══════════════════════════════════════╗
-║        🔬 BIO-SCAN RESULTS          ║
-╚══════════════════════════════════════╝
-
-👥 Lifeforms detected: ${members.length}`;
-  
-  await api.sendMessage(scanHeader, threadID);
-  await sleep(800);
-
-  // Step 3: Member list (in chunks if too many)
-  const memberLines = members.map((m, i) => {
-    const num = String(i + 1).padStart(2, "0");
-    return `  [${num}] ▸ ${m.name}`;
-  });
-  
-  for (let i = 0; i < memberLines.length; i += 10) {
-    const chunk = memberLines.slice(i, i + 10).join("\n");
-    await api.sendMessage(`\`\`\`\n${chunk}\n\`\`\``, threadID);
-    await sleep(500);
-  }
-
-  await sleep(1000);
-
-  // Step 4: Final intro
   const owner = global.config?.OWNER_NAME || "RM ABIR";
-  const finalMsg = `╔══════════════════════════════════════╗
-║     ✅ SODA IS NOW OPERATIONAL     ║
-╚══════════════════════════════════════╝
+  const membersList = formatMemberList(members);
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🦾 *STATUS*
-  Power: ████████████ 100%
-  Roast Engine: 🔥 ARMED
-  Vision Module: 👁️ ACTIVE
-  AI Core: 🧠 GROQ (Llama 3)
-  Owner: 👑 ${owner}
+  const msg = `${entryMessages[Math.floor(Math.random() * entryMessages.length)]}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔥 *RULES OF ENGAGEMENT*
-  • Say "soda" anywhere = I wake up
-  • Send an image = I SEE EVERYTHING
-  • ${owner} = Immune (you're safe)
-  • Everyone else = Fair game 🎯
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+*🖥 BIO-SCAN RESULTS*
+👥 ${members.length} lifeforms detected:
+${membersList}
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+*REQUIREMENTS*
+👑 Owner: ${owner} (immune)
+🔊 Say "soda" to activate
+📸 Send image = I see everything
+━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💬 *Try:* soda what can you do
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
-  await api.sendMessage(finalMsg, threadID);
+  await api.sendMessage(msg, threadID);
 }
 
 module.exports = function ({ api }) {

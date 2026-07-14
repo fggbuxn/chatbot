@@ -6,7 +6,7 @@
   "APPSTATEPATH": "appstate.json",
   "AI_PROVIDER": "gemini",
   "OPENAI_API_KEY": "",
-  "GEMINI_API_KEY": "AQ.Ab8RN6IaCt353f1rIJDO94cjnGIL-_GJwPD5rb5vIic7Qy2dhA",
+  "GEMINI_API_KEY": "AIzaSyChOLe7iCsLkGOSWAUnB5nlRxfaJWneKoA",
   "FCAOption": {
     "selfListen": false,
     "listenEvents": true,

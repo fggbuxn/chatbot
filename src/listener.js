@@ -45,14 +45,12 @@ module.exports = function ({ api }) {
         } catch {}
       }
 
-      // Wake word detection: "soda" or "soda!"
-      const lower = body.toLowerCase().trim();
-      const isWake = lower.startsWith("soda") || lower.includes("soda!");
-
-      if (!isWake) return;
+      // Wake word detection: "soda" anywhere in the message
+      const lower = body.toLowerCase();
+      if (!lower.includes("soda")) return;
 
       // Strip wake word to get the actual prompt
-      let prompt = body.replace(/^soda[!\s,]*/i, "").replace(/soda!/gi, "").trim();
+      let prompt = body.replace(/soda[!\s,]*/gi, "").trim();
 
       // Get image if there's a reply attachment
       let imageUrl = null;

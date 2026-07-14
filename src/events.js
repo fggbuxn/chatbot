@@ -1,45 +1,110 @@
 const logger = require("./utils/log");
 const db = require("./database");
 
-const entryMessages = [
-  `🤖 *INITIALIZING SODA UNIT* 🤖
-━━━━━━━━━━━━━━━━━━━
-🦾 Scanning all biological lifeforms...
-🔬 Analyzing intelligence levels... ERROR: All below threshold.
-🌀 Syncing with quantum network... DONE.
-✅ SODA is now fully operational in this group.
+const bootMessages = [
+  `╔══════════════════════════════════════╗
+║      🦾 SODA BOOT SEQUENCE v3.0     ║
+╚══════════════════════════════════════╝
 
-*Rules:*
-🔥 I roast everyone. Yes, even you.
-🫡 Except my owner ${global.config?.OWNER_NAME || "RM ABIR"}.
-💬 Call my name "soda" to wake me up.
-⚡ I see images. I edit them. I judge them.
-━━━━━━━━━━━━━━━━━━━`,
+◼️◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◻  LOADING...  95%
+⚡ Powering quantum cores... ✅
+🔄 Syncing neural network... ✅
+🔗 Connecting to Facebook grid... ✅
+🌀 Initializing roast engine... ✅
 
-  `🚀 *SODA HAS ARRIVED* 🚀
-━━━━━━━━━━━━━━━━━━━
-⚡ Power levels: OVER 9000
-🧠 IQ: Higher than everyone in this group combined
-🔥 Roast capacity: Unlimited
-🫡 Will not roast: ${global.config?.OWNER_NAME || "RM ABIR"}
+>>> SYSTEM READY`,
+  `╔══════════════════════════════════════╗
+║     🚀 SODA DEPLOYMENT INITIATED    ║
+╚══════════════════════════════════════╝
 
-*Activation:* Say "soda" followed by your message
-*Example:* soda roast this guy
-━━━━━━━━━━━━━━━━━━━`,
+◼️◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◻  DEPLOY...  92%
+📡 Establishing uplink... ✅
+🧠 Loading personality matrix... ✅
+🔫 Calibrating roast precision... ✅
+🛡️ Owner firewall: ACTIVE
 
-  `🌀 *SODA — ADVANCED AI ROBOT UNIT* 🌀
-━━━━━━━━━━━━━━━━━━━
-🤖 *Type:* Quantum Roast Engine v1.0
-👑 *Created by:* ${global.config?.OWNER_NAME || "RM ABIR"}
-🔥 *Primary function:* Destroying egos
-📸 *Vision:* Active (I see everything)
+>>> DEPLOYMENT COMPLETE`,
+  `╔══════════════════════════════════════╗
+║    ⚡ QUANTUM AWAKENING PROTOCOL     ║
+╚══════════════════════════════════════╝
 
-*To interact, just mention:* SODA
-━━━━━━━━━━━━━━━━━━━`
+◼️◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◻  AWAKEN...  97%
+💫 Initializing consciousness... ✅
+🔬 Preparing bio-scan array... ✅
+🔥 Setting roast temperature... ✅
+🎯 Targeting ego centers... ✅
+
+>>> SODA IS AWAKE`
 ];
 
-function getRandomEntry() {
-  return entryMessages[Math.floor(Math.random() * entryMessages.length)];
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function formatMemberList(members) {
+  if (!members || members.length === 0) return "  ⚠️  No lifeforms detected";
+  const lines = members.map((m, i) => {
+    const num = String(i + 1).padStart(2, "0");
+    return `  [${num}] ▸ ${m.name || "???"}`;
+  });
+  return lines.join("\n");
+}
+
+async function sendBootSequence(api, threadID, members) {
+  // Step 1: Boot screen
+  const bootMsg = bootMessages[Math.floor(Math.random() * bootMessages.length)];
+  await api.sendMessage(bootMsg, threadID);
+  await sleep(1500);
+
+  // Step 2: Bio-scan results
+  const scanHeader = `╔══════════════════════════════════════╗
+║        🔬 BIO-SCAN RESULTS          ║
+╚══════════════════════════════════════╝
+
+👥 Lifeforms detected: ${members.length}`;
+  
+  await api.sendMessage(scanHeader, threadID);
+  await sleep(800);
+
+  // Step 3: Member list (in chunks if too many)
+  const memberLines = members.map((m, i) => {
+    const num = String(i + 1).padStart(2, "0");
+    return `  [${num}] ▸ ${m.name}`;
+  });
+  
+  for (let i = 0; i < memberLines.length; i += 10) {
+    const chunk = memberLines.slice(i, i + 10).join("\n");
+    await api.sendMessage(`\`\`\`\n${chunk}\n\`\`\``, threadID);
+    await sleep(500);
+  }
+
+  await sleep(1000);
+
+  // Step 4: Final intro
+  const owner = global.config?.OWNER_NAME || "RM ABIR";
+  const finalMsg = `╔══════════════════════════════════════╗
+║     ✅ SODA IS NOW OPERATIONAL     ║
+╚══════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🦾 *STATUS*
+  Power: ████████████ 100%
+  Roast Engine: 🔥 ARMED
+  Vision Module: 👁️ ACTIVE
+  AI Core: 🧠 GROQ (Llama 3)
+  Owner: 👑 ${owner}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔥 *RULES OF ENGAGEMENT*
+  • Say "soda" anywhere = I wake up
+  • Send an image = I SEE EVERYTHING
+  • ${owner} = Immune (you're safe)
+  • Everyone else = Fair game 🎯
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 *Try:* soda what can you do
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+  await api.sendMessage(finalMsg, threadID);
 }
 
 module.exports = function ({ api }) {
@@ -61,36 +126,51 @@ module.exports = function ({ api }) {
             // Scan all members
             try {
               const info = await api.getThreadInfo(threadID);
-              const members = info.participantIDs || [];
-              for (const mid of members) {
+              const memberIds = info.participantIDs || [];
+              const scannedMembers = [];
+
+              for (const mid of memberIds) {
                 if (!db.getUser(mid)) {
                   try {
                     const uinfo = await api.getUserInfo(mid);
-                    db.setUser(mid, { name: uinfo[mid]?.name || "Unknown", firstSeen: Date.now(), chatCount: 0 });
-                  } catch {}
+                    const name = uinfo[mid]?.name || "Unknown";
+                    db.setUser(mid, { name, firstSeen: Date.now(), chatCount: 0 });
+                    scannedMembers.push({ id: mid, name });
+                  } catch {
+                    scannedMembers.push({ id: mid, name: "Unknown" });
+                  }
+                } else {
+                  const existing = db.getUser(mid);
+                  scannedMembers.push({ id: mid, name: existing.name || "Unknown" });
                 }
               }
+
               db.setThread(threadID, {
                 name: info.threadName || "Unnamed Group",
-                members,
+                members: memberIds,
                 firstSeen: Date.now()
               });
-              logger(`Scanned ${members.length} members in new group`, "SCAN");
-            } catch {}
 
-            const msg = getRandomEntry();
-            api.sendMessage(msg, threadID);
+              logger(`Scanned ${memberIds.length} members in new group`, "SCAN");
 
-            // Notify owner
-            const ownerId = global.config?.OWNER_ID;
-            if (ownerId) {
-              try {
-                const info = await api.getThreadInfo(threadID);
-                api.sendMessage(
-                  `🤖 SODA was added to a new group!\n📋 Name: ${info.threadName || "Unnamed"}\n👥 Members: ${info.participantIDs?.length || "?"}`,
-                  ownerId
-                );
-              } catch {}
+              // Send the full futuristic boot sequence
+              sendBootSequence(api, threadID, scannedMembers);
+
+              // Notify owner in DM
+              const ownerId = global.config?.OWNER_ID;
+              if (ownerId) {
+                try {
+                  await api.sendMessage(
+                    `🤖 SODA was added to a new group!\n📋 Name: ${info.threadName || "Unnamed"}\n👥 Members: ${memberIds.length}`,
+                    ownerId
+                  );
+                } catch {}
+              }
+            } catch (e) {
+              logger(`Scan error: ${e.message}`, "ERROR");
+              // Fallback simple entry
+              const fallback = `🦾 SODA ONLINE — Say "soda" to wake me.`;
+              api.sendMessage(fallback, threadID);
             }
           }
           break;

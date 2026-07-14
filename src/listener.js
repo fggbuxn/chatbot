@@ -14,6 +14,9 @@ fs.ensureDirSync(TEMP_DIR);
 
 async function sendGif(api, threadID, prompt, reply) {
   try {
+    // Only send GIFs ~30% of the time to save quota
+    if (Math.random() > 0.3) return;
+
     const gifUrl = await searchGif(pickKeywords(prompt, reply));
     if (!gifUrl) return;
 

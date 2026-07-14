@@ -31,7 +31,12 @@ async function ask(prompt, userId, imageUrl = null) {
   try {
     const msgs = [
       { role: "system", content: buildSystemPrompt() },
-      ...history.slice(-10).map(m => ({ role: m.role, content: m.content })),
+      ...history.slice(-10).map(m => ({
+        role: m.role,
+        content: Array.isArray(m.content)
+          ? m.content.find(c => c.type === "text")?.text || JSON.stringify(m.content)
+          : m.content
+      })),
     ];
 
     if (imageUrl) {
@@ -76,7 +81,7 @@ function notifyOwner(msg) {
     const api = global.client?.api;
     const ownerId = global.config?.OWNER_ID;
     if (api && ownerId) {
-      api.sendMessage(`🤖 *SODA SYSTEM MSG*\n${msg}`, ownerId);
+      api.sendMessage(`🤖 *SODA SYSTEM MSG*\n${msg}`, ownerId).catch(() => {});
     }
   } catch {}
 }

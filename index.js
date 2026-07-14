@@ -1,5 +1,6 @@
 process.on("unhandledRejection", (reason) => {
-  require("./src/utils/log")(`Unhandled rejection: ${reason?.message || reason}`, "ERROR");
+  const msg = reason?.message || (typeof reason === "object" ? JSON.stringify(reason) : String(reason));
+  require("./src/utils/log")(`Unhandled rejection: ${msg}`, "ERROR");
 });
 
 const login = require("fca-priyansh");

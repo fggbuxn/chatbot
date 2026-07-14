@@ -8,6 +8,7 @@
   "OPENAI_API_KEY": "",
   "GEMINI_API_KEY": "",
   "GROQ_API_KEY": "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",
+  "GIPHY_API_KEY": "",
   "FCAOption": {
     "selfListen": false,
     "listenEvents": true,

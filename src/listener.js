@@ -3,7 +3,34 @@ const db = require("./database");
 const { ask, notifyOwner } = require("./ai");
 const { getActivationResponse } = require("./personality");
 const { randomRoast } = require("./roasts");
+const { searchGif, pickKeywords } = require("./giphy");
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 const pJson = require("../package.json");
+
+const TEMP_DIR = path.join(__dirname, "..", "temp");
+fs.ensureDirSync(TEMP_DIR);
+
+async function sendGif(api, threadID, prompt, reply) {
+  try {
+    const gifUrl = await searchGif(pickKeywords(prompt, reply));
+    if (!gifUrl) return;
+
+    const tmpPath = path.join(TEMP_DIR, `gif_${Date.now()}.gif`);
+    const resp = await axios({ url: gifUrl, responseType: "stream", timeout: 8000 });
+    const writer = fs.createWriteStream(tmpPath);
+    resp.data.pipe(writer);
+
+    await new Promise((resolve, reject) => {
+      writer.on("finish", resolve);
+      writer.on("error", reject);
+    });
+
+    await api.sendMessage({ attachment: fs.createReadStream(tmpPath) }, threadID);
+    fs.unlink(tmpPath).catch(() => {});
+  } catch {}
+}
 
 module.exports = function ({ api }) {
   return async function (event) {
@@ -80,7 +107,9 @@ module.exports = function ({ api }) {
         const reply = await ask(prompt || "Say hello to my owner respectfully", senderID, imageUrl);
         db.addToConvo(senderID, "user", prompt);
         db.addToConvo(senderID, "assistant", reply);
-        return api.sendMessage(reply, threadID);
+        await api.sendMessage(reply, threadID);
+        sendGif(api, threadID, prompt, reply);
+        return;
       }
 
       // Handle everyone else — with roasting
@@ -91,7 +120,8 @@ module.exports = function ({ api }) {
       const reply = await ask(prompt || "Roast this person creatively", senderID, imageUrl);
       db.addToConvo(senderID, "user", prompt);
       db.addToConvo(senderID, "assistant", reply);
-      api.sendMessage(reply, threadID);
+      await api.sendMessage(reply, threadID);
+      sendGif(api, threadID, prompt, reply);
 
     } catch (err) {
       logger(`Listener error: ${err.message}`, "ERROR");

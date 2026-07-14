@@ -7,7 +7,9 @@ const db = require("./database");
 const axios = require("axios");
 
 let openai = null;
-let gemini = null;
+let geminiModels = [];
+
+const TRY_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro"];
 
 function init() {
   const c = global.config;
@@ -17,10 +19,14 @@ function init() {
   }
   if (c.AI_PROVIDER === "gemini" && c.GEMINI_API_KEY) {
     const gen = new GoogleGenerativeAI(c.GEMINI_API_KEY);
-    gemini = gen.getGenerativeModel({ model: "gemini-1.5-pro" });
-    logger("Gemini 1.5 Pro ready", "AI");
+    for (const name of TRY_MODELS) {
+      try {
+        geminiModels.push(gen.getGenerativeModel({ model: name }));
+      } catch {}
+    }
+    logger(`Gemini (${TRY_MODELS.length} models queued)`, "AI");
   }
-  if (!openai && !gemini) {
+  if (!openai && geminiModels.length === 0) {
     logger("No API key set — using local replies only", "WARN");
   }
 }
@@ -32,7 +38,7 @@ async function ask(prompt, userId, imageUrl = null) {
   if (c.AI_PROVIDER === "openai" && openai) {
     return askOpenAI(prompt, history, imageUrl);
   }
-  if (c.AI_PROVIDER === "gemini" && gemini) {
+  if (c.AI_PROVIDER === "gemini" && geminiModels.length > 0) {
     return askGemini(prompt, history, imageUrl);
   }
 
@@ -74,46 +80,49 @@ async function askOpenAI(prompt, history, imageUrl) {
 }
 
 async function askGemini(prompt, history, imageUrl) {
-  try {
-    const contents = history.slice(-10).map(m => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }]
-    }));
+  const contents = history.slice(-10).map(m => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }]
+  }));
 
-    if (imageUrl) {
-      const imgResp = await axios.get(imageUrl, { responseType: "arraybuffer" });
-      const base64 = Buffer.from(imgResp.data).toString("base64");
-      const mime = imgResp.headers["content-type"] || "image/jpeg";
+  for (const model of geminiModels) {
+    try {
+      if (imageUrl) {
+        const imgResp = await axios.get(imageUrl, { responseType: "arraybuffer" });
+        const base64 = Buffer.from(imgResp.data).toString("base64");
+        const mime = imgResp.headers["content-type"] || "image/jpeg";
 
-      const result = await gemini.generateContent({
-        contents: [
-          ...contents,
-          {
-            role: "user",
-            parts: [
-              { text: `${buildSystemPrompt()}\n\nUser: ${prompt || "Roast this image creatively."}` },
-              { inlineData: { mimeType: mime, data: base64 } }
-            ]
-          }
-        ],
-        generationConfig: { maxOutputTokens: 1024, temperature: 0.85 }
+        const result = await model.generateContent({
+          contents: [
+            ...contents,
+            {
+              role: "user",
+              parts: [
+                { text: `${buildSystemPrompt()}\n\nUser: ${prompt || "Roast this image creatively."}` },
+                { inlineData: { mimeType: mime, data: base64 } }
+              ]
+            }
+          ],
+          generationConfig: { maxOutputTokens: 1024, temperature: 0.85 }
+        });
+        return result.response.text();
+      }
+
+      const chat = model.startChat({
+        history: contents,
+        generationConfig: { maxOutputTokens: 1024, temperature: 0.85 },
+        systemInstruction: { parts: [{ text: buildSystemPrompt() }] }
       });
+
+      const result = await chat.sendMessage(prompt || "Say something funny");
       return result.response.text();
+    } catch (err) {
+      logger(`Gemini (${model.model}) failed: ${err.message}`, "WARN");
     }
-
-    const chat = gemini.startChat({
-      history: contents,
-      generationConfig: { maxOutputTokens: 1024, temperature: 0.85 },
-      systemInstruction: { parts: [{ text: buildSystemPrompt() }] }
-    });
-
-    const result = await chat.sendMessage(prompt || "Say something funny");
-    return result.response.text();
-  } catch (err) {
-    logger(`Gemini error: ${err.message}`, "ERROR");
-    notifyOwner(`⚠️ Gemini API error: ${err.message}`);
-    return fallbackReply();
   }
+
+  notifyOwner("⚠️ All Gemini models failed. Check API key/permissions.");
+  return fallbackReply();
 }
 
 function fallbackReply() {

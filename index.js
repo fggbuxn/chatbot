@@ -1,3 +1,7 @@
+process.on("unhandledRejection", (reason) => {
+  require("./src/utils/log")(`Unhandled rejection: ${reason?.message || reason}`, "ERROR");
+});
+
 const login = require("fca-priyansh");
 const { existsSync, readFileSync, writeFileSync } = require("fs-extra");
 const { join } = require("path");

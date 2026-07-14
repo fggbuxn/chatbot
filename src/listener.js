@@ -45,9 +45,13 @@ module.exports = function ({ api }) {
         } catch {}
       }
 
-      // Wake word detection: "soda" anywhere in the message
+      // Detect if replying to SODA's own message (continuation — no wake word needed)
+      const botID = api.getCurrentUserID();
+      const isReplyToBot = event.messageReply && String(event.messageReply.senderID) === String(botID);
+
+      // Wake word detection: "soda" anywhere OR replying to SODA's message
       const lower = body.toLowerCase();
-      if (!lower.includes("soda")) return;
+      if (!lower.includes("soda") && !isReplyToBot) return;
 
       // Strip wake word to get the actual prompt
       let prompt = body.replace(/soda[!\s,]*/gi, "").trim();
